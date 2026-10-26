@@ -1,0 +1,13 @@
+# Cloudflare response headers (copied to dist/ by Vite).
+
+# Cross-origin isolation enables SharedArrayBuffer, so the WASM (CPU) fallback runs multi-threaded.
+# `credentialless` still allows loading models from huggingface.co and the runtime from jsDelivr.
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: credentialless
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+# Built files have content hashes in their names, so they can be cached forever.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

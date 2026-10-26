@@ -43,8 +43,17 @@ npm run build && npm run preview
 
 Add `?device=wasm` to the URL to force the CPU path for comparison.
 
-**Deploying:** serve the app with `Cross-Origin-Opener-Policy: same-origin` and
-`Cross-Origin-Embedder-Policy: credentialless` (already set for `dev`/`preview` in `vite.config.ts`).
-Without them the CPU fallback runs single-threaded and is about 3× slower.
+## Deploying to Cloudflare (free tier)
+
+The app is a static site, deployed as a static-assets Worker (`wrangler.jsonc`, serves `dist/`).
+
+- **From GitHub (auto-deploy on push):** Cloudflare dashboard → Workers & Pages → Create → Import a repository →
+  pick this repo. Build command `npm run build`, deploy command `npx wrangler deploy`.
+- **From your machine:** `npx wrangler login` once, then `npm run deploy`.
+- `npm run preview:cf` serves the production build locally exactly as Cloudflare will.
+
+`public/_headers` sets the cross-origin isolation headers (multi-threaded CPU fallback) and long caching for hashed
+assets. onnxruntime-web's 26.9 MB WASM is left out of the build (Cloudflare's per-file limit is 25 MiB); Transformers.js
+loads it from the jsDelivr CDN at runtime, and models come from huggingface.co, so both hosts must be reachable.
 
 **License note:** RMBG-1.4 weights are for non-commercial use; the other models allow commercial use. To add a model, add an entry to `src/models.ts` with its precisions and sizes.
