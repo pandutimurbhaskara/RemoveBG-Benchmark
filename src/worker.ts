@@ -141,6 +141,8 @@ async function load(key: ModelKey, download: boolean, forceCpu: boolean, cpuReas
       post({ type: 'ready', model: key, backend: 'webgpu', dtype: spec.precisionLabel ?? dtype, loadMs: performance.now() - start })
       return
     } catch (err) {
+      // A failed download is not a GPU problem: report it instead of retrying on CPU.
+      if (isDownloadError(err)) throw new Error(downloadFailedMessage(err))
       console.warn('[bg-removal] WebGPU failed', err)
       if (!spec.dtype.wasm) throw new Error(`${spec.label} failed on WebGPU and has no CPU version: ${errorMessage(err)}`)
       post({ type: 'restartOnCpu', model: key, reason: `WebGPU failed: ${errorMessage(err)}`, download })
@@ -150,7 +152,11 @@ async function load(key: ModelKey, download: boolean, forceCpu: boolean, cpuReas
 
   const dtype = spec.dtype.wasm
   if (!dtype) throw new Error(unsupportedReason(spec, gpu, forceCpu) ?? `${spec.label} needs WebGPU.`)
-  current = await loadOn(spec, 'wasm', dtype)
+  try {
+    current = await loadOn(spec, 'wasm', dtype)
+  } catch (err) {
+    throw isDownloadError(err) ? new Error(downloadFailedMessage(err)) : err
+  }
   post({ type: 'ready', model: key, backend: 'wasm', dtype, loadMs: performance.now() - start, fallbackReason: problem ?? undefined })
 }
 
@@ -259,6 +265,23 @@ async function postCacheInfo() {
 
 function errorMessage(err: unknown) {
   return err instanceof Error ? err.message : String(err)
+}
+
+/**
+ * Whether a load failed while fetching model files (network, CORS or HTTP error) rather than in
+ * the runtime. transformers.js reports HTTP errors with the file's URL in the message.
+ */
+function isDownloadError(err: unknown) {
+  if (!(err instanceof Error)) return false
+  return (
+    err.name === 'ModelFileNotFoundError' ||
+    (err instanceof TypeError && /fetch|network|load failed/i.test(err.message)) ||
+    /"https?:\/\//.test(err.message)
+  )
+}
+
+function downloadFailedMessage(err: unknown) {
+  return `Couldn't download the model files from huggingface.co (${errorMessage(err)}). Check your connection and try again.`
 }
 
 probeGpu().then((info) => post({ type: 'gpu', info }))

@@ -2,11 +2,13 @@
 
 # Cross-origin isolation enables SharedArrayBuffer, so the WASM (CPU) fallback runs multi-threaded.
 # `credentialless` still allows loading models from huggingface.co and the runtime from jsDelivr.
+# No Referer: huggingface.co rejects requests whose Referer is a *.workers.dev address (404/503),
+# which breaks model downloads. This also covers the model worker, whose script gets these headers.
 /*
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Embedder-Policy: credentialless
   X-Content-Type-Options: nosniff
-  Referrer-Policy: strict-origin-when-cross-origin
+  Referrer-Policy: no-referrer
 
 # Built files have content hashes in their names, so they can be cached forever.
 /assets/*
